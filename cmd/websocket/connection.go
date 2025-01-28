@@ -1,7 +1,7 @@
 package connection
 
 import (
-	"io"
+	"fmt"
 	"log/slog"
 
 	"github.com/gorilla/websocket"
@@ -27,15 +27,14 @@ func (aConn *AppConnection) Serving(usConn *UserConnection) {
 
 	usConn.Status = true
 	connections = append(connections, usConn)
+	fmt.Printf("New connection:%s\n", usConn.Username)
 
 	for {
 		msg := &models.Message{}
 		if err := usConn.Conn.ReadJSON(msg); err != nil {
-			if err == io.EOF {
-				usConn.Status = false
-				break
-			}
+			usConn.Status = false
 			slog.Error(err.Error())
+			break
 		}
 		go aConn.sendMessage(msg)
 	}
@@ -51,6 +50,7 @@ func (aConn *AppConnection) sendMessage(msg *models.Message) {
 			if err := conn.Conn.WriteJSON(msg); err != nil {
 				slog.Error(err.Error())
 			}
+			slog.Info("Message was recived")
 		}
 	}
 }

@@ -3,7 +3,10 @@ package main
 import (
 	"database/sql"
 	"log"
+	"log/slog"
 	"net/http"
+
+	_ "github.com/lib/pq"
 
 	"github.com/yunya101/perepisochnik/cmd/web"
 	connection "github.com/yunya101/perepisochnik/cmd/websocket"
@@ -19,6 +22,7 @@ type Application struct {
 func main() {
 	app := Application{}
 	app.start()
+	slog.Info("Starting server")
 	app.Controller.Start()
 }
 
@@ -38,6 +42,7 @@ func (a *Application) start() {
 }
 
 func StartDB() *sql.DB {
+	slog.Info("Openning database connection")
 	db, err := sql.Open("postgres", config.DataBase)
 
 	if err != nil {

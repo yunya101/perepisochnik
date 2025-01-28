@@ -2,7 +2,10 @@ package web
 
 import (
 	"encoding/json"
+	"fmt"
+	"io"
 	"log"
+	"log/slog"
 	"net/http"
 
 	"github.com/gorilla/websocket"
@@ -32,18 +35,24 @@ func (c *Controller) getUsersHandler(w http.ResponseWriter, r *http.Request) {
 	req := &models.Chat{}
 
 	if err := dec.Decode(req); err != nil {
-		http.Error(w, "Cannot decode json", http.StatusBadRequest)
-		return
+		if err != io.EOF {
+			http.Error(w, "Cannot decode json", http.StatusBadRequest)
+			fmt.Printf("New error: %s", err.Error())
+			return
+		}
 	}
+
+	fmt.Printf("New request from chat:%v", *req)
 	ws, err := upgrader.Upgrade(w, r, nil)
 
 	if err != nil {
 		http.Error(w, "Cannot get WebSocket connection", http.StatusInternalServerError)
+		slog.Error(err.Error())
 		return
 	}
 
 	usConn := connection.UserConnection{
-		Username: req.User1.Username,
+		Username: req.User1,
 		Conn:     ws,
 	}
 
