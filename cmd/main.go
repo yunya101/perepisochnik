@@ -3,34 +3,38 @@ package main
 import (
 	"database/sql"
 	"log"
+	"net/http"
 
 	"github.com/yunya101/perepisochnik/cmd/web"
+	connection "github.com/yunya101/perepisochnik/cmd/websocket"
 	"github.com/yunya101/perepisochnik/internal/config"
 	"github.com/yunya101/perepisochnik/internal/data"
-	"github.com/yunya101/perepisochnik/internal/services"
 )
 
 type Application struct {
-	Controller  *web.Controller
-	MessService *services.MessageService
-	UsService   *services.UserService
+	Controller *web.Controller
+	Connection *connection.AppConnection
 }
 
 func main() {
 	app := Application{}
 	app.start()
+	app.Controller.Start()
 }
 
 func (a *Application) start() {
 	db := StartDB()
-	a.MessService = &services.MessageService{
-		Repo: &data.MessageRepo{},
+	conn := connection.AppConnection{
+		MessageRepo: &data.MessageRepo{
+			DB: db,
+		},
 	}
-	a.UsService = &services.UserService{
-		Repo: &data.UserRepo{},
+	controller := &web.Controller{
+		Server:  http.NewServeMux(),
+		AppConn: &conn,
 	}
-	a.MessService.Repo.DB = db
-	a.UsService.Repo.DB = db
+	a.Connection = &conn
+	a.Controller = controller
 }
 
 func StartDB() *sql.DB {
