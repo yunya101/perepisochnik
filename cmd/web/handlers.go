@@ -1,21 +1,22 @@
 package web
 
 import (
-	"encoding/json"
 	"fmt"
-	"io"
 	"log"
 	"log/slog"
 	"net/http"
 
 	"github.com/gorilla/websocket"
 	connection "github.com/yunya101/perepisochnik/cmd/websocket"
+	"github.com/yunya101/perepisochnik/internal/data"
 	"github.com/yunya101/perepisochnik/internal/models"
 )
 
 type Controller struct {
-	Server  *http.ServeMux
-	AppConn *connection.AppConnection
+	Server   *http.ServeMux
+	AppConn  *connection.AppConnection
+	UserRepo *data.UserRepo
+	MesRepo  *data.MessageRepo
 }
 
 var upgrader = websocket.Upgrader{
@@ -30,32 +31,34 @@ func (c *Controller) Start() {
 }
 
 func (c *Controller) getUsersHandler(w http.ResponseWriter, r *http.Request) {
-	dec := json.NewDecoder(r.Body)
 
-	req := &models.Chat{}
+	username := r.Header.Get("username")
 
-	if err := dec.Decode(req); err != nil {
-		if err != io.EOF {
-			http.Error(w, "Cannot decode json", http.StatusBadRequest)
-			fmt.Printf("New error: %s", err.Error())
-			return
-		}
+	messages := c.MesRepo.GetAllByUsername(username)
+
+	user := &models.User{
+		Username: username,
+	}
+	if messages == nil {
+		user.Messages = make([]*models.Message, 0)
+	} else {
+		user.Messages = messages
 	}
 
-	fmt.Printf("New request from chat:%v", *req)
 	ws, err := upgrader.Upgrade(w, r, nil)
 
 	if err != nil {
-		http.Error(w, "Cannot get WebSocket connection", http.StatusInternalServerError)
 		slog.Error(err.Error())
 		return
 	}
 
-	usConn := connection.UserConnection{
-		Username: req.User1,
-		Conn:     ws,
+	usConn := &connection.UserConnection{
+		User:        user,
+		Conn:        ws,
+		Status:      true,
+		NewMessages: make([]models.Message, 0),
 	}
 
-	c.AppConn.Serving(&usConn)
-
+	fmt.Printf("New connection:%s", username)
+	c.AppConn.Serving(usConn)
 }

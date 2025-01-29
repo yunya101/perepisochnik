@@ -1,8 +1,8 @@
 package connection
 
 import (
-	"fmt"
 	"log/slog"
+	"time"
 
 	"github.com/gorilla/websocket"
 	"github.com/yunya101/perepisochnik/internal/data"
@@ -10,9 +10,10 @@ import (
 )
 
 type UserConnection struct {
-	Username string
-	Conn     *websocket.Conn
-	Status   bool
+	User        *models.User
+	Conn        *websocket.Conn
+	Status      bool
+	NewMessages []models.Message
 }
 
 type AppConnection struct {
@@ -22,35 +23,27 @@ type AppConnection struct {
 var connections []*UserConnection
 
 func (aConn *AppConnection) Serving(usConn *UserConnection) {
-
 	defer usConn.Conn.Close()
 
-	usConn.Status = true
-	connections = append(connections, usConn)
-	fmt.Printf("New connection:%s\n", usConn.Username)
+	go aConn.SendMsgToServer(usConn)
+	go aConn.GetMsgsFromServer(usConn)
+}
+
+func (aConn *AppConnection) SendMsgToServer(usConn *UserConnection) {
 
 	for {
 		msg := &models.Message{}
 		if err := usConn.Conn.ReadJSON(msg); err != nil {
-			usConn.Status = false
 			slog.Error(err.Error())
 			break
 		}
-		go aConn.sendMessage(msg)
+		aConn.MessageRepo.Insert(msg)
+
+		usConn.Conn.SetReadDeadline(time.Now().Add(time.Minute * 3))
 	}
+
 }
 
-func (aConn *AppConnection) sendMessage(msg *models.Message) {
-	recipient := msg.Recipient
+func (aConn *AppConnection) GetMsgsFromServer(usConn *UserConnection) {
 
-	aConn.MessageRepo.Insert(msg)
-
-	for _, conn := range connections {
-		if conn.Username == recipient && conn.Status {
-			if err := conn.Conn.WriteJSON(msg); err != nil {
-				slog.Error(err.Error())
-			}
-			slog.Info("Message was recived")
-		}
-	}
 }
