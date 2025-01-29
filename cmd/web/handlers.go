@@ -34,16 +34,18 @@ func (c *Controller) getUsersHandler(w http.ResponseWriter, r *http.Request) {
 
 	username := r.Header.Get("username")
 
-	messages := c.MesRepo.GetAllByUsername(username)
+	//messages := c.MesRepo.GetAllByUsername(username)
 
 	user := &models.User{
 		Username: username,
 	}
-	if messages == nil {
-		user.Messages = make([]*models.Message, 0)
-	} else {
-		user.Messages = messages
-	}
+	// if messages == nil || len(messages) < 1 {
+	// 	user.Messages = make([]*models.Message, 0)
+	// } else {
+	// 	user.Messages = messages
+	// }
+
+	user.Messages = make([]*models.Message, 0)
 
 	ws, err := upgrader.Upgrade(w, r, nil)
 
@@ -53,10 +55,9 @@ func (c *Controller) getUsersHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	usConn := &connection.UserConnection{
-		User:        user,
-		Conn:        ws,
-		Status:      true,
-		NewMessages: make([]models.Message, 0),
+		User:   user,
+		Conn:   ws,
+		Status: true,
 	}
 
 	fmt.Printf("New connection:%s", username)
