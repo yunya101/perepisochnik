@@ -8,6 +8,7 @@ import (
 
 	"github.com/gorilla/websocket"
 	connection "github.com/yunya101/perepisochnik/cmd/websocket"
+	"github.com/yunya101/perepisochnik/internal/config"
 	"github.com/yunya101/perepisochnik/internal/data"
 	"github.com/yunya101/perepisochnik/internal/models"
 )
@@ -27,7 +28,7 @@ var upgrader = websocket.Upgrader{
 func (c *Controller) Start() {
 
 	c.Server.HandleFunc("/", c.getUsersHandler)
-	log.Fatal(http.ListenAndServe("localhost:3210", c.Server))
+	log.Fatal(http.ListenAndServe(config.ServerPort, c.Server))
 }
 
 func (c *Controller) getUsersHandler(w http.ResponseWriter, r *http.Request) {
