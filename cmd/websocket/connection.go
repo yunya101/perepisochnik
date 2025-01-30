@@ -24,19 +24,19 @@ type AppConnection struct {
 
 type unsendMsgs struct {
 	msgs map[string][]*models.Message
-	mu   sync.Mutex
 }
 
 var unsended *unsendMsgs = &unsendMsgs{
 	msgs: map[string][]*models.Message{},
-	mu:   sync.Mutex{},
 }
 
 func (aConn *AppConnection) Serving(usConn *UserConnection) {
 
+	mu := &sync.Mutex{}
+
 	isDisconected := make(chan (bool))
-	go aConn.SendMsgToServer(usConn, isDisconected)
-	go aConn.GetMsgsFromServer(usConn, isDisconected)
+	go aConn.SendMsgToServer(usConn, isDisconected, mu)
+	go aConn.GetMsgsFromServer(usConn, isDisconected, mu)
 
 	if <-isDisconected {
 		usConn.Conn.Close()
@@ -44,7 +44,7 @@ func (aConn *AppConnection) Serving(usConn *UserConnection) {
 
 }
 
-func (aConn *AppConnection) SendMsgToServer(usConn *UserConnection, isDisconected chan (bool)) {
+func (aConn *AppConnection) SendMsgToServer(usConn *UserConnection, isDisconected chan (bool), mu *sync.Mutex) {
 
 	for {
 		msg := &models.Message{}
@@ -59,7 +59,7 @@ func (aConn *AppConnection) SendMsgToServer(usConn *UserConnection, isDisconecte
 
 		//aConn.MessageRepo.Insert(msg)
 
-		unsended.mu.Lock()
+		mu.Lock()
 		fmt.Println("Mu was locked")
 
 		if unsended.msgs[msg.Recipient] == nil {
@@ -69,34 +69,35 @@ func (aConn *AppConnection) SendMsgToServer(usConn *UserConnection, isDisconecte
 
 		unsended.msgs[msg.Recipient] = append(unsended.msgs[msg.Recipient], msg)
 
-		unsended.mu.Unlock()
+		mu.Unlock()
 		fmt.Println("Mu was unlock")
 		usConn.Conn.SetReadDeadline(time.Now().Add(time.Minute * 3))
 	}
 
 }
 
-func (aConn *AppConnection) GetMsgsFromServer(usConn *UserConnection, isDisconected chan (bool)) {
+func (aConn *AppConnection) GetMsgsFromServer(usConn *UserConnection, isDisconected chan (bool), mu *sync.Mutex) {
 
 	for {
-		unsended.mu.Lock()
+		mu.Lock()
 		if usConn.Status {
 			for i, msg := range unsended.msgs[usConn.User.Username] {
+				fmt.Printf("Try to send %v", *msg)
 				if err := usConn.Conn.WriteJSON(msg); err != nil {
 					slog.Error(err.Error())
-					unsended.mu.Unlock()
+					mu.Unlock()
 					isDisconected <- false
 					usConn.Status = false
 					fmt.Printf("Trying to disconnect from GetMsgsFrom...\n")
 					return
 				} else {
 					fmt.Println("Removing element")
-					projlib.RemoveElementFromSlice(unsended.msgs[usConn.User.Username], i)
+					unsended.msgs[usConn.User.Username] = projlib.RemoveElementFromSlice(unsended.msgs[usConn.User.Username], i)
 				}
-				unsended.mu.Unlock()
 			}
 		} else {
 			return
 		}
+		mu.Unlock()
 	}
 }
