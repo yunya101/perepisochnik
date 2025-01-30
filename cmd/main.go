@@ -22,7 +22,7 @@ type Application struct {
 }
 
 func main() {
-	addr := flag.String("addr", "localhost:3210", "HTTP address of app")
+	addr := flag.String("addr", ":3210", "HTTP address of app")
 	dbArrd := flag.String("dbAddr", "host=localhost port=5432 user=postgres password=admin dbname=perepisochnik sslmode=disable", "Data Base Address (Only use postgres)")
 
 	flag.Parse()
