@@ -60,6 +60,6 @@ func (c *Controller) getUsersHandler(w http.ResponseWriter, r *http.Request) {
 		Status: true,
 	}
 
-	fmt.Printf("New connection:%s", username)
+	fmt.Printf("New connection:%s\n", username)
 	c.AppConn.Serving(usConn)
 }
