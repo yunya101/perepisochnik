@@ -3,7 +3,6 @@ package main
 import (
 	"database/sql"
 	"flag"
-	"fmt"
 	"log"
 	"log/slog"
 	"net/http"
@@ -31,7 +30,7 @@ func main() {
 
 	app := Application{}
 	app.start()
-	fmt.Printf("Starting server on %s addr\n", config.ServerPort)
+	slog.Info("Starting server ", "addr", *addr)
 	app.Controller.Start()
 }
 

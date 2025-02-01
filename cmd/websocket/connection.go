@@ -67,7 +67,7 @@ func (aConn *AppConnection) SendMsgToServer(usConn *UserConnection, isDisconecte
 			unsended.msgs[msg.Recipient] = make([]*models.Message, 0)
 		}
 
-		unsended.msgs[msg.Recipient] = append(unsended.msgs[msg.Recipient], msg)
+		unsended.msgs[msg.Recipient] = projlib.InsertMsg(unsended.msgs[msg.Recipient], msg)
 
 		mu.Unlock()
 		usConn.Conn.SetReadDeadline(time.Now().Add(time.Minute * 3))
@@ -80,8 +80,9 @@ func (aConn *AppConnection) GetMsgsFromServer(usConn *UserConnection, isDisconec
 	for {
 		mu.Lock()
 		if usConn.Status {
-			for _, msg := range unsended.msgs[usConn.User.Username] {
+			for len(unsended.msgs[usConn.User.Username]) > 0 {
 				slog.Info("Sending message...")
+				msg := unsended.msgs[usConn.User.Username][0]
 				if err := usConn.Conn.WriteJSON(msg); err != nil {
 					slog.Error(err.Error())
 					mu.Unlock()
