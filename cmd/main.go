@@ -37,16 +37,19 @@ func main() {
 
 func (a *Application) start() {
 	db := StartDB()
-	conn := connection.AppConnection{
+	conn := &connection.AppConnection{
 		MessageRepo: &data.MessageRepo{
 			DB: db,
 		},
 	}
 	controller := &web.Controller{
 		Server:  http.NewServeMux(),
-		AppConn: &conn,
+		AppConn: conn,
+		MesRepo: &data.MessageRepo{
+			DB: db,
+		},
 	}
-	a.Connection = &conn
+	a.Connection = conn
 	a.Controller = controller
 }
 

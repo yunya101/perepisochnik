@@ -37,9 +37,13 @@ func (r *MessageRepo) GetAllByUsername(username string) []*models.Message {
 	result := []*models.Message{}
 
 	for rows.Next() {
-		msg := &models.Message{}
-		rows.Scan(&msg.Id, &msg.Reciver, &msg.Recipient, &msg.Text)
-		result = append(result, msg)
+		msg := models.Message{}
+		if err := rows.Scan(&msg.Id, &msg.Reciver, &msg.Recipient, &msg.Text); err != nil {
+			slog.Error(err.Error())
+			return nil
+		} else {
+			result = append(result, &msg)
+		}
 	}
 
 	if rows.Err() != nil {
