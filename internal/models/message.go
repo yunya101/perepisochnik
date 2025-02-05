@@ -5,4 +5,5 @@ type Message struct {
 	Reciver   string `json:"reciver"`
 	Recipient string `json:"recipient"`
 	Text      string `json:"text"`
+	ChatId    int    `json:"chat_id"`
 }

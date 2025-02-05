@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/gorilla/websocket"
+	conf "github.com/yunya101/perepisochnik/internal/config"
 	"github.com/yunya101/perepisochnik/internal/data"
 	"github.com/yunya101/perepisochnik/internal/models"
 	projlib "github.com/yunya101/perepisochnik/pkg"
@@ -36,12 +37,12 @@ func (aConn *AppConnection) Serving(usConn *UserConnection) {
 	usConn.Conn.SetReadDeadline(time.Now().Add(time.Minute * 3))
 	isDisconected := make(chan (bool))
 
-	slog.Info("New connection")
 	go aConn.SendMsgToServer(usConn, isDisconected, mu)
 	go aConn.GetMsgsFromServer(usConn, isDisconected, mu)
 
 	if <-isDisconected {
 		usConn.Conn.Close()
+		conf.InfoLog.Printf("Disconnecting:%s", usConn.User.Username)
 	}
 
 }
@@ -51,13 +52,13 @@ func (aConn *AppConnection) SendMsgToServer(usConn *UserConnection, isDisconecte
 	for {
 		msg := &models.Message{}
 		if err := usConn.Conn.ReadJSON(msg); err != nil {
-			slog.Error(err.Error())
+			conf.ErrLog.Println(err)
 			usConn.Status = false
 			isDisconected <- true
-			slog.Info("Disconnecting from SendMsg...\n")
+			conf.InfoLog.Printf("Disconnecting from SendMsg:%s", usConn.User.Username)
 			break
 		}
-		slog.Info("Sending message...")
+		conf.InfoLog.Printf("Sending msg:%s", usConn.User.Username)
 
 		aConn.MessageRepo.Insert(msg)
 
@@ -84,11 +85,11 @@ func (aConn *AppConnection) GetMsgsFromServer(usConn *UserConnection, isDisconec
 				slog.Info("Sending message...")
 				msg := unsended.msgs[usConn.User.Username][0]
 				if err := usConn.Conn.WriteJSON(msg); err != nil {
-					slog.Error(err.Error())
+					conf.ErrLog.Printf("%s:%s", err.Error(), usConn.User.Username)
 					mu.Unlock()
 					isDisconected <- false
 					usConn.Status = false
-					slog.Info("Disconnecting from GetMsg...")
+					conf.InfoLog.Printf("Disconnecting from GetMsg:%s", usConn.User.Username)
 					return
 				} else {
 					unsended.msgs[usConn.User.Username] = projlib.RemoveElementFromSlice(unsended.msgs[usConn.User.Username], 0)

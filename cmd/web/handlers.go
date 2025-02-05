@@ -1,14 +1,13 @@
 package web
 
 import (
-	"fmt"
+	"database/sql"
 	"log"
-	"log/slog"
 	"net/http"
 
 	"github.com/gorilla/websocket"
 	connection "github.com/yunya101/perepisochnik/cmd/websocket"
-	"github.com/yunya101/perepisochnik/internal/config"
+	conf "github.com/yunya101/perepisochnik/internal/config"
 	"github.com/yunya101/perepisochnik/internal/data"
 	"github.com/yunya101/perepisochnik/internal/models"
 )
@@ -23,22 +22,51 @@ type Controller struct {
 var upgrader = websocket.Upgrader{
 	ReadBufferSize:  1024,
 	WriteBufferSize: 1024,
+	CheckOrigin: func(r *http.Request) bool {
+		return true
+	},
 }
 
 func (c *Controller) Start() {
 
-	c.Server.HandleFunc("/", c.getUsersHandler)
-	log.Fatal(http.ListenAndServe(config.ServerPort, c.Server))
+	c.Server.HandleFunc("/", c.wsConnHandler)
+	log.Fatal(http.ListenAndServe(conf.ServerPort, c.Server))
 }
 
-func (c *Controller) getUsersHandler(w http.ResponseWriter, r *http.Request) {
+func (c *Controller) wsConnHandler(w http.ResponseWriter, r *http.Request) {
 
 	username := r.Header.Get("username")
 
-	messages := c.MesRepo.GetAllByUsername(username)
+	pass := r.Header.Get("pass")
 
-	user := &models.User{
-		Username: username,
+	user, err := c.UserRepo.GetByName(username)
+
+	if err != nil {
+		if err != sql.ErrNoRows {
+			http.Error(w, "Internal server error", http.StatusInternalServerError)
+			return
+		}
+	}
+
+	if user == nil || username == "" {
+		user = &models.User{
+			Username: username,
+			Password: pass,
+		}
+		if err := c.UserRepo.Insert(username, pass); err != nil {
+			http.Error(w, "Internal server error", http.StatusInternalServerError)
+			return
+		}
+	}
+
+	messages, err := c.MesRepo.GetAllByUsername(username)
+
+	if err != nil {
+		if err != sql.ErrNoRows {
+			http.Error(w, "Internal server error", http.StatusInternalServerError)
+			return
+		}
+
 	}
 
 	if messages == nil || len(messages) < 1 {
@@ -52,7 +80,7 @@ func (c *Controller) getUsersHandler(w http.ResponseWriter, r *http.Request) {
 	ws, err := upgrader.Upgrade(w, r, nil)
 
 	if err != nil {
-		slog.Error(err.Error())
+		conf.ErrLog.Println(err)
 		return
 	}
 
@@ -62,6 +90,10 @@ func (c *Controller) getUsersHandler(w http.ResponseWriter, r *http.Request) {
 		Status: true,
 	}
 
-	fmt.Printf("New connection:%s\n", username)
+	conf.InfoLog.Printf("New connection:%s", username)
 	c.AppConn.Serving(usConn)
+}
+
+func (c *Controller) auth(w http.ResponseWriter, r *http.Request) {
+
 }

@@ -2,8 +2,8 @@ package data
 
 import (
 	"database/sql"
-	"log/slog"
 
+	conf "github.com/yunya101/perepisochnik/internal/config"
 	"github.com/yunya101/perepisochnik/internal/models"
 )
 
@@ -11,19 +11,23 @@ type UserRepo struct {
 	DB *sql.DB
 }
 
-func (r *UserRepo) Insert(username string) {
-	stmt := `INSERT INTO users (username)
-			VALUES ($1)`
+func (r *UserRepo) Insert(username, pass string) error {
+	stmt := `INSERT INTO users (username, password)
+			VALUES ($1, $2)`
 
-	_, err := r.DB.Exec(stmt, username)
+	_, err := r.DB.Exec(stmt, username, pass)
 
 	if err != nil {
-		slog.Error(err.Error())
+		conf.ErrLog.Printf("%s:%s", err.Error(), username)
+		return err
 	}
+
+	conf.InfoLog.Printf("Insert into users:%s", username)
+	return nil
 
 }
 
-func (r *UserRepo) GetByName(username string) *models.User {
+func (r *UserRepo) GetByName(username string) (*models.User, error) {
 	stmt := `SELECT * FROM users
 			WHERE username = $1`
 
@@ -31,7 +35,12 @@ func (r *UserRepo) GetByName(username string) *models.User {
 
 	user := &models.User{}
 
-	row.Scan(&user.Username)
+	if err := row.Scan(&user.Id, &user.Username, &user.Password); err != nil {
+		conf.ErrLog.Printf("%s:%s", err.Error(), username)
+		return nil, err
+	}
 
-	return user
+	conf.InfoLog.Printf("Select form users:%s", username)
+
+	return user, nil
 }

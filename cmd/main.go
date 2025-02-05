@@ -22,7 +22,7 @@ type Application struct {
 
 func main() {
 	addr := flag.String("addr", ":3210", "HTTP address of app")
-	dbArrd := flag.String("dbAddr", "host=localhost port=5432 user=postgres password=admin dbname=perepisochnik sslmode=disable", "Data Base Address (Only use postgres)")
+	dbArrd := flag.String("dbAddr", "host=109.196.102.221 port=5432 user=postgres password=4WuS-U-dBRtM dbname=perepisochnik sslmode=disable", "Data Base Address (Only use postgres)")
 
 	flag.Parse()
 	config.DataBase = *dbArrd
@@ -45,6 +45,9 @@ func (a *Application) start() {
 		Server:  http.NewServeMux(),
 		AppConn: conn,
 		MesRepo: &data.MessageRepo{
+			DB: db,
+		},
+		UserRepo: &data.UserRepo{
 			DB: db,
 		},
 	}
