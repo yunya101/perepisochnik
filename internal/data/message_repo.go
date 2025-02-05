@@ -12,10 +12,10 @@ type MessageRepo struct {
 }
 
 func (r *MessageRepo) Insert(msg *models.Message) error {
-	stmt := `INSERT INTO messages (reciver, recipient, text)
-			VALUES ($1, $2, $3)`
+	stmt := `INSERT INTO messages (reciver, recipient, text, chat_id)
+			VALUES ($1, $2, $3, $4)`
 
-	_, err := r.DB.Exec(stmt, msg.Reciver, msg.Recipient, msg.Text)
+	_, err := r.DB.Exec(stmt, msg.Reciver, msg.Recipient, msg.Text, msg.ChatId)
 	if err != nil {
 		conf.ErrLog.Printf("%s:%v", err.Error(), msg)
 		return err
@@ -42,7 +42,7 @@ func (r *MessageRepo) GetAllByUsername(username string) ([]*models.Message, erro
 	for rows.Next() {
 		msg := models.Message{}
 		if err := rows.Scan(&msg.Id, &msg.Reciver, &msg.Recipient, &msg.Text, &msg.ChatId); err != nil {
-			conf.ErrLog.Printf("%v:%s", msg, username)
+			conf.ErrLog.Printf("%s:%s", err.Error(), username)
 			return nil, err
 		} else {
 			result = append(result, &msg)
