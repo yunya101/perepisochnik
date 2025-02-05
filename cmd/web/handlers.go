@@ -36,8 +36,8 @@ func (c *Controller) Start() {
 
 func (c *Controller) wsConnHandler(w http.ResponseWriter, r *http.Request) {
 
-	username := r.Header.Get("username")
-	pass := r.Header.Get("pass")
+	username := r.URL.Query().Get("username")
+	pass := r.URL.Query().Get("pass")
 	user, err := c.UserRepo.GetByName(username)
 
 	if err != nil {
@@ -94,12 +94,5 @@ func (c *Controller) wsConnHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func (c *Controller) auth(w http.ResponseWriter, r *http.Request) {
-	name := r.Header.Get("username")
-	pass := r.Header.Get("pass")
-
-	r.Header.Set("username", name)
-	r.Header.Set("pass", pass)
-
-	http.Redirect(w, r, "/", http.StatusMovedPermanently)
 
 }
