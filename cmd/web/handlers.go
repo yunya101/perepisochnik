@@ -30,15 +30,14 @@ var upgrader = websocket.Upgrader{
 func (c *Controller) Start() {
 
 	c.Server.HandleFunc("/", c.wsConnHandler)
+	c.Server.HandleFunc("/auth", c.auth)
 	log.Fatal(http.ListenAndServe(conf.ServerPort, c.Server))
 }
 
 func (c *Controller) wsConnHandler(w http.ResponseWriter, r *http.Request) {
 
 	username := r.Header.Get("username")
-
 	pass := r.Header.Get("pass")
-
 	user, err := c.UserRepo.GetByName(username)
 
 	if err != nil {
@@ -95,5 +94,12 @@ func (c *Controller) wsConnHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func (c *Controller) auth(w http.ResponseWriter, r *http.Request) {
+	name := r.Header.Get("username")
+	pass := r.Header.Get("pass")
+
+	r.Header.Set("username", name)
+	r.Header.Set("pass", pass)
+
+	http.Redirect(w, r, "/", http.StatusMovedPermanently)
 
 }
