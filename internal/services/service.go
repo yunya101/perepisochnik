@@ -25,7 +25,7 @@ func (s *Service) AddMsg(msg *models.Message) error {
 
 func (s *Service) GetUsersChats(username string) (*models.User, error) {
 
-	chats, err := s.repo.GetUsersChats(username)
+	chats, err := s.repo.GetChatsByUsername(username)
 
 	if err != nil {
 		return nil, err
@@ -35,13 +35,13 @@ func (s *Service) GetUsersChats(username string) (*models.User, error) {
 		chat.Users = make([]string, 0)
 		chat.Messages = make([]models.Message, 0)
 
-		chat, err := s.repo.GetChatsUsers(chat)
+		chat, err := s.repo.GetUsersFromChat(chat)
 
 		if err != nil {
 			return nil, err
 		}
 
-		chat, err = s.repo.GetChatsMsgs(chat)
+		chat, err = s.repo.GetMsgsFromChat(chat)
 
 		if err != nil {
 			return nil, err
@@ -57,4 +57,16 @@ func (s *Service) GetUsersChats(username string) (*models.User, error) {
 	}
 
 	return user, nil
+}
+
+func (s *Service) GetUsersFromChat(chat *models.Chat) (*models.Chat, error) {
+
+	chat, err := s.repo.GetUsersFromChat(chat)
+
+	if err != nil {
+		return nil, err
+	}
+
+	return chat, nil
+
 }

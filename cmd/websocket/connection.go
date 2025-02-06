@@ -1,6 +1,7 @@
 package connection
 
 import (
+	"log"
 	"log/slog"
 	"sync"
 	"time"
@@ -27,7 +28,8 @@ func (ws *WsConnection) SetService(s *services.Service) {
 }
 
 type unsendMsgs struct {
-	mu   *sync.RWMutex
+	mu *sync.RWMutex
+	// Key - username
 	msgs map[string][]*models.Message
 }
 
@@ -68,11 +70,21 @@ func (wsConn *WsConnection) SendMsgToServer(usConn *UserConnection, isDisconecte
 
 		unsended.mu.Lock()
 
-		if unsended.msgs[msg.Recipient] == nil {
-			unsended.msgs[msg.Recipient] = make([]*models.Message, 0)
+		chat := &models.Chat{
+			ID: msg.ChatId,
+		}
+		chat, err := wsConn.service.GetUsersFromChat(chat)
+
+		if err != nil {
+			log.Fatal(err)
 		}
 
-		unsended.msgs[msg.Recipient] = projlib.InsertMsg(unsended.msgs[msg.Recipient], msg)
+		for _, usr := range chat.Users {
+			if unsended.msgs[usr] == nil {
+				unsended.msgs[usr] = make([]*models.Message, 0)
+			}
+			unsended.msgs[usr] = projlib.InsertMsg(unsended.msgs[usr], msg)
+		}
 
 		unsended.mu.Unlock()
 		usConn.Conn.SetReadDeadline(time.Now().Add(time.Minute * 3))

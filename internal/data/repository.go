@@ -15,8 +15,8 @@ func (r *Repository) SetDB(db *sql.DB) {
 	r.db = db
 }
 
-func (r *Repository) GetUsersChats(username string) ([]*models.Chat, error) {
-	stmt := `SELECT c.id c.name FROM chats c
+func (r *Repository) GetChatsByUsername(username string) ([]*models.Chat, error) {
+	stmt := `SELECT c.id, c.name FROM chats c
 			JOIN users_chats uc ON c.id = uc.chat
 			WHERE uc.username = $1`
 
@@ -53,7 +53,7 @@ func (r *Repository) GetUsersChats(username string) ([]*models.Chat, error) {
 	return chats, nil
 }
 
-func (r *Repository) GetChatsUsers(chat *models.Chat) (*models.Chat, error) {
+func (r *Repository) GetUsersFromChat(chat *models.Chat) (*models.Chat, error) {
 
 	stmt := `SELECT username FROM users_chats
 			WHERE chat = $1`
@@ -88,8 +88,8 @@ func (r *Repository) GetChatsUsers(chat *models.Chat) (*models.Chat, error) {
 
 }
 
-func (r *Repository) GetChatsMsgs(chat *models.Chat) (*models.Chat, error) {
-	stmt := `SELECT * FROM messages WHERE chat = $1`
+func (r *Repository) GetMsgsFromChat(chat *models.Chat) (*models.Chat, error) {
+	stmt := `SELECT * FROM messages WHERE chat_id = $1`
 
 	rows, err := r.db.Query(stmt, chat.ID)
 
@@ -122,7 +122,7 @@ func (r *Repository) GetChatsMsgs(chat *models.Chat) (*models.Chat, error) {
 }
 
 func (r *Repository) InsertMsg(msg *models.Message) error {
-	stmt := `INSERT INTO messages (sender, text, chat)
+	stmt := `INSERT INTO messages (sender, text, chat_id)
 	VALUES ($1, $2, $3)`
 
 	_, err := r.db.Exec(stmt, msg.Sender, msg.Text, msg.ChatId)
