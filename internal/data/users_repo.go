@@ -35,7 +35,7 @@ func (r *UserRepo) GetByName(username string) (*models.User, error) {
 
 	user := &models.User{}
 
-	if err := row.Scan(&user.Id, &user.Username, &user.Password); err != nil {
+	if err := row.Scan(&user.Username, &user.Password); err != nil {
 		conf.ErrLog.Printf("%s:%s", err.Error(), username)
 		return nil, err
 	}

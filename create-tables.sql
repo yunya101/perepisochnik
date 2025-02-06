@@ -1,0 +1,22 @@
+CREATE TABLE users (
+	username VARCHAR(15) PRIMARY KEY NOT NULL,
+	password VARCHAR(50) NOT NULL
+);
+
+CREATE TABLE chats (
+	id SERIAL PRIMARY KEY NOT NULL,
+	name VARCHAR(50) NOT NULL
+);
+
+CREATE TABLE users_chats (
+	username VARCHAR(50) REFERENCES users(username) NOT NULL,
+	chat INTEGER REFERENCES chats(id) NOT NULL
+);
+
+CREATE TABLE messages (
+	id SERIAL PRIMARY KEY NOT NULL,
+	reciver VARCHAR(50) REFERENCES users(username) NOT NULL,
+	recipient VARCHAR(50) REFERENCES users(username) NOT NULL,
+	text VARCHAR(500) NOT NULL,
+	chat_id INTEGER REFERENCES chats(id)
+);
