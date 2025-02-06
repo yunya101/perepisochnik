@@ -5,8 +5,8 @@ import (
 	"flag"
 	"log"
 	"log/slog"
-	"net/http"
 
+	"github.com/gorilla/mux"
 	_ "github.com/lib/pq"
 
 	"github.com/yunya101/perepisochnik/cmd/web"
@@ -42,12 +42,15 @@ func (a *Application) start() {
 		},
 	}
 	controller := &web.Controller{
-		Server:  http.NewServeMux(),
+		Server:  mux.NewRouter(),
 		AppConn: conn,
 		MesRepo: &data.MessageRepo{
 			DB: db,
 		},
 		UserRepo: &data.UserRepo{
+			DB: db,
+		},
+		ChatRepo: &data.ChatRepo{
 			DB: db,
 		},
 	}

@@ -2,9 +2,11 @@ package web
 
 import (
 	"database/sql"
+	"encoding/json"
 	"log"
 	"net/http"
 
+	"github.com/gorilla/mux"
 	"github.com/gorilla/websocket"
 	connection "github.com/yunya101/perepisochnik/cmd/websocket"
 	conf "github.com/yunya101/perepisochnik/internal/config"
@@ -13,10 +15,11 @@ import (
 )
 
 type Controller struct {
-	Server   *http.ServeMux
+	Server   *mux.Router
 	AppConn  *connection.AppConnection
 	UserRepo *data.UserRepo
 	MesRepo  *data.MessageRepo
+	ChatRepo *data.ChatRepo
 }
 
 var upgrader = websocket.Upgrader{
@@ -29,8 +32,9 @@ var upgrader = websocket.Upgrader{
 
 func (c *Controller) Start() {
 
-	c.Server.HandleFunc("/", c.wsConnHandler)
-	c.Server.HandleFunc("/auth", c.auth)
+	c.Server.HandleFunc("/", c.wsConnHandler).Methods("GET")
+	c.Server.HandleFunc("/auth", c.auth).Methods("POST")
+	c.Server.HandleFunc("/chat", c.createChatHandler).Methods("POST")
 	log.Fatal(http.ListenAndServe(conf.ServerPort, c.Server))
 }
 
@@ -94,5 +98,26 @@ func (c *Controller) wsConnHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func (c *Controller) auth(w http.ResponseWriter, r *http.Request) {
+
+}
+
+func (c *Controller) createChatHandler(w http.ResponseWriter, r *http.Request) {
+
+	chat := &models.Chat{}
+
+	decoder := json.NewDecoder(r.Body)
+
+	if err := decoder.Decode(chat); err != nil {
+		conf.ErrLog.Printf("%s:%v", err.Error(), chat)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
+
+	if err := c.ChatRepo.Insert(chat); err != nil {
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
 
 }
