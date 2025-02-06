@@ -13,11 +13,11 @@ import (
 	connection "github.com/yunya101/perepisochnik/cmd/websocket"
 	"github.com/yunya101/perepisochnik/internal/config"
 	"github.com/yunya101/perepisochnik/internal/data"
+	"github.com/yunya101/perepisochnik/internal/services"
 )
 
 type Application struct {
 	Controller *web.Controller
-	Connection *connection.AppConnection
 }
 
 func main() {
@@ -36,25 +36,23 @@ func main() {
 
 func (a *Application) start() {
 	db := StartDB()
-	conn := &connection.AppConnection{
-		MessageRepo: &data.MessageRepo{
-			DB: db,
-		},
-	}
-	controller := &web.Controller{
-		Server:  mux.NewRouter(),
-		AppConn: conn,
-		MesRepo: &data.MessageRepo{
-			DB: db,
-		},
-		UserRepo: &data.UserRepo{
-			DB: db,
-		},
-		ChatRepo: &data.ChatRepo{
-			DB: db,
-		},
-	}
-	a.Connection = conn
+
+	repo := &data.Repository{}
+	repo.SetDB(db)
+
+	service := &services.Service{}
+	service.SetRepo(repo)
+
+	conn := &connection.WsConnection{}
+	conn.SetService(service)
+
+	controller := &web.Controller{}
+	controller.SetService(service)
+	controller.SetWsConn(conn)
+
+	mux := mux.NewRouter()
+	controller.SetServer(mux)
+
 	a.Controller = controller
 }
 

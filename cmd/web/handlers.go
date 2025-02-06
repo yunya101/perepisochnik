@@ -2,7 +2,6 @@ package web
 
 import (
 	"database/sql"
-	"encoding/json"
 	"log"
 	"net/http"
 
@@ -10,16 +9,25 @@ import (
 	"github.com/gorilla/websocket"
 	connection "github.com/yunya101/perepisochnik/cmd/websocket"
 	conf "github.com/yunya101/perepisochnik/internal/config"
-	"github.com/yunya101/perepisochnik/internal/data"
-	"github.com/yunya101/perepisochnik/internal/models"
+	"github.com/yunya101/perepisochnik/internal/services"
 )
 
 type Controller struct {
-	Server   *mux.Router
-	AppConn  *connection.AppConnection
-	UserRepo *data.UserRepo
-	MesRepo  *data.MessageRepo
-	ChatRepo *data.ChatRepo
+	server  *mux.Router
+	wsConn  *connection.WsConnection
+	service *services.Service
+}
+
+func (c *Controller) SetServer(mux *mux.Router) {
+	c.server = mux
+}
+
+func (c *Controller) SetWsConn(ws *connection.WsConnection) {
+	c.wsConn = ws
+}
+
+func (c *Controller) SetService(s *services.Service) {
+	c.service = s
 }
 
 var upgrader = websocket.Upgrader{
@@ -32,17 +40,16 @@ var upgrader = websocket.Upgrader{
 
 func (c *Controller) Start() {
 
-	c.Server.HandleFunc("/", c.wsConnHandler).Methods("GET")
-	c.Server.HandleFunc("/auth", c.auth).Methods("POST")
-	c.Server.HandleFunc("/chat", c.createChatHandler).Methods("POST")
-	log.Fatal(http.ListenAndServe(conf.ServerPort, c.Server))
+	c.server.HandleFunc("/", c.wsConnHandler).Methods("GET")
+	c.server.HandleFunc("/auth", c.auth).Methods("POST")
+	c.server.HandleFunc("/chat", c.createChatHandler).Methods("POST")
+	log.Fatal(http.ListenAndServe(conf.ServerPort, c.server))
 }
 
 func (c *Controller) wsConnHandler(w http.ResponseWriter, r *http.Request) {
 
 	username := r.URL.Query().Get("username")
-	pass := r.URL.Query().Get("pass")
-	user, err := c.UserRepo.GetByName(username)
+	user, err := c.service.GetUsersChats(username)
 
 	if err != nil {
 		if err != sql.ErrNoRows {
@@ -52,17 +59,9 @@ func (c *Controller) wsConnHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if user == nil || username == "" {
-		user = &models.User{
-			Username: username,
-			Password: pass,
-		}
-		if err := c.UserRepo.Insert(username, pass); err != nil {
-			http.Error(w, "Internal server error", http.StatusInternalServerError)
-			return
-		}
+		http.Error(w, "User not found", http.StatusUnauthorized)
+		return
 	}
-
-	messages, err := c.MesRepo.GetAllByUsername(username)
 
 	if err != nil {
 		if err != sql.ErrNoRows {
@@ -71,14 +70,6 @@ func (c *Controller) wsConnHandler(w http.ResponseWriter, r *http.Request) {
 		}
 
 	}
-
-	if messages == nil || len(messages) < 1 {
-		user.Messages = make([]*models.Message, 0)
-	} else {
-		user.Messages = messages
-	}
-
-	user.Messages = make([]*models.Message, 0)
 
 	ws, err := upgrader.Upgrade(w, r, nil)
 
@@ -94,7 +85,7 @@ func (c *Controller) wsConnHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	conf.InfoLog.Printf("New connection:%s", username)
-	c.AppConn.Serving(usConn)
+	c.wsConn.Serving(usConn)
 }
 
 func (c *Controller) auth(w http.ResponseWriter, r *http.Request) {
@@ -102,22 +93,4 @@ func (c *Controller) auth(w http.ResponseWriter, r *http.Request) {
 }
 
 func (c *Controller) createChatHandler(w http.ResponseWriter, r *http.Request) {
-
-	chat := &models.Chat{}
-
-	decoder := json.NewDecoder(r.Body)
-
-	if err := decoder.Decode(chat); err != nil {
-		conf.ErrLog.Printf("%s:%v", err.Error(), chat)
-		http.Error(w, "Internal server error", http.StatusInternalServerError)
-		return
-	}
-
-	if err := c.ChatRepo.Insert(chat); err != nil {
-		http.Error(w, "Internal server error", http.StatusInternalServerError)
-		return
-	}
-
-	w.WriteHeader(http.StatusOK)
-
 }

@@ -7,8 +7,8 @@ import (
 
 	"github.com/gorilla/websocket"
 	conf "github.com/yunya101/perepisochnik/internal/config"
-	"github.com/yunya101/perepisochnik/internal/data"
 	"github.com/yunya101/perepisochnik/internal/models"
+	"github.com/yunya101/perepisochnik/internal/services"
 	projlib "github.com/yunya101/perepisochnik/pkg"
 )
 
@@ -18,8 +18,12 @@ type UserConnection struct {
 	Status bool
 }
 
-type AppConnection struct {
-	MessageRepo *data.MessageRepo
+type WsConnection struct {
+	service *services.Service
+}
+
+func (ws *WsConnection) SetService(s *services.Service) {
+	ws.service = s
 }
 
 type unsendMsgs struct {
@@ -32,13 +36,13 @@ var unsended *unsendMsgs = &unsendMsgs{
 	mu:   &sync.RWMutex{},
 }
 
-func (aConn *AppConnection) Serving(usConn *UserConnection) {
+func (wsConn *WsConnection) Serving(usConn *UserConnection) {
 
 	usConn.Conn.SetReadDeadline(time.Now().Add(time.Minute * 3))
 	isDisconected := make(chan (bool))
 
-	go aConn.SendMsgToServer(usConn, isDisconected)
-	go aConn.GetMsgsFromServer(usConn, isDisconected)
+	go wsConn.SendMsgToServer(usConn, isDisconected)
+	go wsConn.GetMsgsFromServer(usConn, isDisconected)
 
 	if <-isDisconected {
 		usConn.Conn.Close()
@@ -47,7 +51,7 @@ func (aConn *AppConnection) Serving(usConn *UserConnection) {
 
 }
 
-func (aConn *AppConnection) SendMsgToServer(usConn *UserConnection, isDisconected chan (bool)) {
+func (wsConn *WsConnection) SendMsgToServer(usConn *UserConnection, isDisconected chan (bool)) {
 
 	for {
 		msg := &models.Message{}
@@ -60,7 +64,7 @@ func (aConn *AppConnection) SendMsgToServer(usConn *UserConnection, isDisconecte
 		}
 		conf.InfoLog.Printf("Sending msg:%s", usConn.User.Username)
 
-		aConn.MessageRepo.Insert(msg)
+		wsConn.service.AddMsg(msg)
 
 		unsended.mu.Lock()
 
@@ -76,7 +80,7 @@ func (aConn *AppConnection) SendMsgToServer(usConn *UserConnection, isDisconecte
 
 }
 
-func (aConn *AppConnection) GetMsgsFromServer(usConn *UserConnection, isDisconected chan (bool)) {
+func (wsConn *WsConnection) GetMsgsFromServer(usConn *UserConnection, isDisconected chan (bool)) {
 
 	for {
 		unsended.mu.Lock()
