@@ -134,3 +134,35 @@ func (r *Repository) InsertMsg(msg *models.Message) error {
 
 	return nil
 }
+
+func (r *Repository) InsertChat(chat *models.Chat) (int64, error) {
+
+	stmt := `INSERT INTO chats (name)
+	VALUES ($1) RETURNING id`
+
+	var id int64
+	err := r.db.QueryRow(stmt, chat.Name).Scan(&id)
+
+	if err != nil {
+		conf.ErrLog.Printf("%s:%s", err, chat.Name)
+		return 0, err
+	}
+
+	return id, nil
+}
+
+func (r *Repository) InsertUsersIntoChat(chat *models.Chat) error {
+
+	stmt := `INSERT INTO users_chats (username, chat)
+	VALUES ($1, $2)`
+
+	for _, u := range chat.Users {
+		_, err := r.db.Exec(stmt, u, chat.ID)
+		if err != nil {
+			conf.ErrLog.Printf("%s:%s:chat_id=%v", err, u, chat.ID)
+			return err
+		}
+	}
+
+	return nil
+}

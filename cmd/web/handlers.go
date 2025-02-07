@@ -2,6 +2,7 @@ package web
 
 import (
 	"database/sql"
+	"encoding/json"
 	"log"
 	"net/http"
 
@@ -9,6 +10,7 @@ import (
 	"github.com/gorilla/websocket"
 	connection "github.com/yunya101/perepisochnik/cmd/websocket"
 	conf "github.com/yunya101/perepisochnik/internal/config"
+	"github.com/yunya101/perepisochnik/internal/models"
 	"github.com/yunya101/perepisochnik/internal/services"
 )
 
@@ -93,4 +95,23 @@ func (c *Controller) auth(w http.ResponseWriter, r *http.Request) {
 }
 
 func (c *Controller) createChatHandler(w http.ResponseWriter, r *http.Request) {
+
+	decoder := json.NewDecoder(r.Body)
+
+	chat := &models.Chat{}
+
+	if err := decoder.Decode(chat); err != nil {
+		conf.ErrLog.Println(err)
+		http.Error(w, "Cannot parse json", http.StatusBadRequest)
+		return
+	}
+
+	err := c.service.AddChat(chat)
+
+	if err != nil {
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
 }

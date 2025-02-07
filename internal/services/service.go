@@ -70,3 +70,21 @@ func (s *Service) GetUsersFromChat(chat *models.Chat) (*models.Chat, error) {
 	return chat, nil
 
 }
+
+func (s *Service) AddChat(chat *models.Chat) error {
+	id, err := s.repo.InsertChat(chat)
+
+	if err != nil {
+		return err
+	}
+
+	chat.ID = id
+
+	err = s.repo.InsertUsersIntoChat(chat)
+
+	if err != nil {
+		return err
+	}
+
+	return nil
+}

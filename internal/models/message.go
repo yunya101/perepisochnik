@@ -1,9 +1,8 @@
 package models
 
 type Message struct {
-	Id     int      `json:"id"`
-	Sender string   `json:"sender"`
-	Text   string   `json:"text"`
-	ChatId int      `json:"chat_id"`
-	ReadBy []string `json:"read_by"`
+	Id     int64  `json:"id"`
+	Sender string `json:"sender"`
+	Text   string `json:"text"`
+	ChatId int64  `json:"chat_id"`
 }
